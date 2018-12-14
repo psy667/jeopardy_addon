@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+  <link rel="stylesheet" href="spectre.min.css">
+  <script src="axios.min.js"></script>
+  <script src="vue.js"></script>
+<!-- <script src="https://unpkg.com/axios/dist/axios.min.js"></script> -->
+  <!-- <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script> -->
+</head>
+<body>
+
+  <div id='app'>
+    <div class='h3'>Админ</div><button class="btn" @click='showMessages = true' :class='{badge: newMessages}' :data-badge="newMessages">Сообщения игроков</button>
+
+    <div class="modal active" id="modal-id" v-if='showMessages'>
+      <div class="modal-overlay" @click='hideMessages()'></div>
+      <div class="modal-container">
+        <div class="modal-header">
+          <div class="btn btn-clear float-right" @click='hideMessages()'></div>
+          <div class="modal-title h5">Сообщения</div>
+        </div>
+        <div class="modal-body">
+          <div class="content">
+            <table class="table">
+  <thead>
+    <tr>
+      <th>Игрок</th>
+      <th>Сообщение</th>
+
+    </tr>
+  </thead>
+  <tbody>
+    <tr v-for='message in messages'>
+      <td>{{ message.name }}</td>
+      <td>{{ message.text }}</td>
+
+    </tr>
+  </tbody>
+</table>
+          </div>
+        </div>
+        <div class="modal-footer">
+        </div>
+      </div>
+    </div>
+
+
+    <button class="btn btn-success main-button" @click='start()' v-if='!started'>Старт</button>
+    <button class="btn btn-error main-button" @click='end()' v-if='started'>Конец</button>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Игрок</th>
+          <th>Очередность</th>
+          <th>Действие</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for='item in answers'>
+          <td>{{ item.name }}</td>
+          <td>{{ item.order }}</td>
+          <td><span class="label label-error" v-if='item.skip === "true"'>Пропуск</span>
+              <span class="label label-success" v-else>Ответ</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div>
+
+  <script>
+    let app = new Vue({
+      el: '#app',
+      data: {
+        answers: [],
+        started: false,
+        watcher: 0,
+        showMessages: false,
+        messages: [],
+        newMessages: 0
+      },
+      methods: {
+        hideMessages(){
+          this.showMessages = false;
+          this.newMessages =  0;
+        },
+        start(){
+          var audio = new Audio(); // Создаём новый элемент Audio
+          audio.src = 'sound.mp3'; // Указываем путь к звуку "клика"
+          audio.autoplay = true;
+          let context = this;
+          axios.get('/start')
+          .then(function (response) {
+            context.started = true;
+          })
+
+          this.watcher = setInterval(this.getAnswers, 500);
+        },
+        end(){
+          clearInterval(this.watcher);
+          let context = this;
+          axios.get('/end')
+          .then(function (response) {
+            context.started = false;
+            // console.log(response.data.answers)
+          })
+        },
+
+        getAnswers(){
+          let context = this;
+          axios.get('/getAnswers')
+          .then(function (response) {
+            context.answers = response.data.answers;
+            // console.log(response.data.answers)
+          })
+        },
+        ping(){
+          let start = Date.now();
+
+          axios.get('/timer?c='+this.name)
+          .then(function (response) {
+            let end = Date.now();
+            elPing.innerHTML = end - start;
+            console.log(response);
+          })
+          .catch(function (error) {
+            console.log(error);
+          })
+        }
+      },
+      mounted(){
+        let context = this;
+        setInterval(function(){
+        let old = context.messages;
+          axios.get('/getMessages')
+          .then(function (response) {
+            let firstCheck = !context.messages.length;
+            context.messages = response.data.messages;
+            if(JSON.stringify(old) != JSON.stringify(context.messages) && !firstCheck){
+              context.newMessages++;
+            }
+            console.log(response.data.messages)
+          })
+        }, 500)
+      }
+    });
+  </script>
+
+  <style>
+    #app{
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      /* height: 100vh; */
+    }
+    .main-button{
+      margin-top: 50px;
+      font-size: 36px;
+      font-weight: bold;
+      width: 100%;
+      height: 100px;
+    }
+  </style>
+</body>
+</html>

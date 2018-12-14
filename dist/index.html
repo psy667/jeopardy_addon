@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Своя игра аддон</title>
+  <link rel="stylesheet" href="spectre.min.css">
+  <script src="axios.min.js"></script>
+  <!-- <script src="https://unpkg.com/axios/dist/axios.min.js"></script> -->
+  <script src="vue.js"></script>
+
+  <!-- <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script> -->
+</head>
+<body>
+
+  <div id='app'>
+    <div v-if='isname' class='h3' @click='isname = false'>Игрок: {{ name }}</div>
+    <div class="form-group" v-if='!isname'>
+      <label class="form-label" for="input-example-1">Имя</label>
+      <input class="form-input" type="text" id="input-example-1" v-model='name' ><button class="btn" @click='setName()'>Ввести</button>
+    </div>
+    <div class='columns'>
+
+      <span class="label column col-3 col-ml-auto">Ping: </span><span class="label label-success column col-3 col-mr-auto">{{ ping }}</span>
+    </div>
+    <button class="btn btn-primary main-button" :disabled='!isname || !allowed' @click='answer(false)'>Ответ</button>
+    <button class="btn btn-error main-button" :disabled='!isname || !allowed' @click='answer(true)'>Пропустить</button>
+
+    <div class="form-group">
+      <label class="form-label" for="input-example-3">Сообщение админу</label>
+      <textarea class="form-input" id="input-example-3" rows="3" v-model='message'></textarea>
+
+      <button class='btn' :disabled='!isname || !message' @click="sendMessage()">Отправить</button>
+    </div>
+
+
+  </div>
+
+  <script>
+    let app = new Vue({
+      el: '#app',
+      data: {
+        message: '',
+        name: '',
+        isname: false,
+        allowed: true,
+        ping: "-",
+        id: ""
+      },
+      methods: {
+        answer(skip){
+          window.navigator.vibrate(200);
+          let context = this;
+          let start = Date.now();
+          axios.get('/answer',{params: {user: context.name, id:context.id, skip:skip}})
+          .then(function (response) {
+            console.log(response.data.falseStart)
+            let end = Date.now();
+            context.ping = end - start;
+            if(response.data.falseStart){
+              context.allowed = false;
+            };
+            setTimeout(function(){
+              context.allowed = true;
+            }, 2000);
+
+          })
+          .catch(function (error) {
+            console.log(error);
+          })
+        },
+        sendMessage(){
+          let context = this;
+          axios.get(`/sendMessage?user=${this.name}&text=${this.message}`)
+          .then(function (response) {
+            console.log('Сообщение отправлено')
+            context.message = ""
+          })
+          .catch(function (error) {
+            console.log(error);
+          })
+        },
+        setName(){
+          this.isname = true;
+          localStorage.setItem('name', this.name);
+        }
+      },
+      mounted(){
+        this.name = localStorage.getItem('name');
+        this.id = localStorage.getItem('id');
+        if(!this.id){
+          this.id = Math.round(Math.random()*10e6).toString(16);
+          localStorage.setItem('id', this.id);
+        }
+        if(this.name){
+          this.isname = true;
+        }
+
+      }
+    });
+  </script>
+
+  <style>
+    #app{
+      padding: 20px;
+    }
+    .main-button{
+      margin-top: 50px;
+      font-size: 36px;
+      font-weight: bold;
+      width: 100%;
+      height: 150px;
+    }
+    .main-button.btn-error{
+      margin-top: 20px;
+      height: 100px;
+    }
+  </style>
+</body>
+</html>
